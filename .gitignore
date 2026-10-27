@@ -1,0 +1,11 @@
+# PlatformIO
+.pio/
+.vscode/.browse.c_cpp.db*
+
+# Python
+__pycache__/
+.venv/
+.pytest_cache/
+
+# Obsidian (estado de ventanas por usuario)
+OBC/Obsidian/Rovert/.obsidian/workspace.json
