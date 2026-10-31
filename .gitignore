@@ -2,6 +2,7 @@
 .pio/
 .vscode/.browse.c_cpp.db*
 .vscode/ipch/
+.*
 
 # STM32 (CMake / STM32CubeIDE): salidas de compilación
 Telemetria/Transmisor_STM32/**/build/
@@ -36,5 +37,4 @@ desktop.ini
 *~
 *.swp
 
-# Instrucciones locales para Claude Code
-CLAUDE.md
+
