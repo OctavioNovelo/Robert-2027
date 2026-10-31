@@ -6,7 +6,7 @@
 <title>Rovert OBC</title>
 <!--
   UI de la estación terrena del rover.
-  Fuente única: OBC/UI/index.html  →  copiar a Imagen/Camaras/Prueba_Camara/data/index.html
+  Fuente única: OBC/UI/index.html  →  copiar a Imagen/data/index.html
   Video/audio: XIAO ESP32S3 (:81/stream, :82/audio).  Telemetría y LiDAR: OBC/puente/puente.py (ws://localhost:8765).
   Parámetros opcionales en la URL: ?cam=192.168.4.1&ws=ws://localhost:8765
 -->
@@ -161,6 +161,15 @@
   .verif::before { content: ""; width: 7px; height: 7px; background: var(--ink-3); }
   .verif.ok { color: var(--ok); }  .verif.ok::before { background: var(--ok); }
   .verif.no { color: var(--bad); } .verif.no::before { background: var(--bad); }
+  .verif.warn { color: var(--warn); } .verif.warn::before { background: var(--warn); }
+  .banderas { display: flex; gap: 16px; flex-wrap: wrap; }
+  .ejes {
+    display: grid; grid-template-columns: 52px repeat(3, minmax(0, 1fr)); gap: 4px 10px;
+    padding: 8px 12px 10px; border-top: 1px solid var(--line);
+  }
+  .ejes span { font-size: 10.5px; color: var(--ink-3); letter-spacing: .14em; }
+  .ejes b { font-size: 15px; font-weight: 500; white-space: nowrap; }
+  .ejes b.vacio { color: var(--ink-3); }
   .stats { display: grid; grid-template-columns: 1fr 1fr; border-top: 1px solid var(--line); }
   .stats div { padding: 8px 12px; }
   .stats div:nth-child(odd) { border-right: 1px dashed var(--line); }
@@ -207,7 +216,7 @@
   body.hud #p-tlm { top: 72px; right: 16px; width: 300px; }
   body.hud #p-rf { bottom: 16px; right: 16px; width: 300px; }
   body.hud #p-lidar { bottom: 16px; left: 16px; width: 210px; }
-  body.hud #p-eventos, body.hud .cab .sub { display: none; }
+  body.hud #p-eventos, body.hud #p-imu, body.hud .cab .sub { display: none; }
   body.hud #p-rf .lecturas, body.hud .lidar .escala, body.hud .lidar-dat { display: none; }
   body.hud .fila { grid-template-columns: 52px minmax(0, 1fr); }
   body.hud .fila canvas { display: none; }
@@ -277,7 +286,22 @@
       <div class="fila"><span class="et">TEMP</span><span class="val vacio" id="temp">—<small>°C</small></span><canvas id="s-temp" data-et="TEMP" data-u="°C"></canvas></div>
       <div class="fila"><span class="et">ALT</span><span class="val vacio" id="alt">—<small>m</small></span><canvas id="s-alt" data-et="ALT" data-u="m"></canvas></div>
       <div class="fila"><span class="et">PRES</span><span class="val vacio" id="pres">—<small>hPa</small></span><canvas id="s-pres" data-et="PRES" data-u="hPa"></canvas></div>
-      <div class="fila compacta"><span class="et">VERIF</span><span class="verif" id="verif">—</span></div>
+      <div class="fila"><span class="et">HUM</span><span class="val vacio" id="hum">—<small>%RH</small></span><canvas id="s-hum" data-et="HUM" data-u="%RH"></canvas></div>
+      <div class="fila compacta"><span class="et">SENS</span><span class="banderas"><span class="verif" id="b-bme">BME280</span><span class="verif" id="b-bno">BNO085</span></span></div>
+      <div class="fila compacta"><span class="et">FASE</span><span class="verif" id="fase">—</span></div>
+    </div>
+  </section>
+
+  <section class="panel" id="p-imu">
+    <div class="cab"><span><b>IMU-01</b><span class="sub"> · BNO085</span></span><span class="estado" id="imu-estado">SIN DATOS</span></div>
+    <div class="lecturas">
+      <div class="fila"><span class="et">|A|</span><span class="val vacio" id="amag">—<small>m/s²</small></span><canvas id="s-amag" data-et="|A|" data-u="m/s²"></canvas></div>
+      <div class="fila"><span class="et">|ω|</span><span class="val vacio" id="gmag">—<small>°/s</small></span><canvas id="s-gmag" data-et="|ω|" data-u="°/s"></canvas></div>
+    </div>
+    <div class="ejes">
+      <span></span><span>X</span><span>Y</span><span>Z</span>
+      <span>ACC</span><b class="vacio" id="ax">—</b><b class="vacio" id="ay">—</b><b class="vacio" id="az">—</b>
+      <span>GYR</span><b class="vacio" id="gx">—</b><b class="vacio" id="gy">—</b><b class="vacio" id="gz">—</b>
     </div>
   </section>
 
@@ -292,6 +316,8 @@
       <div><span>PERDIDOS</span><b id="perd">—</b></div>
       <div><span>RECIBIDOS</span><b id="recib">0</b></div>
       <div><span>ÚLTIMO</span><b id="ult">—</b></div>
+      <div><span>TX ENCENDIDO</span><b id="tx-up">—</b></div>
+      <div><span>REINICIOS TX</span><b id="tx-rst">0</b></div>
     </div>
   </section>
 
@@ -410,7 +436,7 @@
     g.fillStyle = '#0a0d10'; g.beginPath(); g.arc(X(k), Y(datos[k]), 4, 0, 7); g.fill();
     g.fillStyle = '#ffb000'; g.beginPath(); g.arc(X(k), Y(datos[k]), 2.5, 0, 7); g.fill();
   }
-  ['s-temp', 's-alt', 's-pres', 's-rssi', 's-snr'].forEach(sparkline);
+  ['s-temp', 's-alt', 's-pres', 's-hum', 's-amag', 's-gmag', 's-rssi', 's-snr'].forEach(sparkline);
 
   // ---------- LiDAR ----------
   const lidarCv = $('lidar');
@@ -462,14 +488,31 @@
   // ---------- Estado de telemetría ----------
   const est = {
     link: { rx: false, lidar: false }, ws: false,
-    ultTlm: 0, ultLidar: 0, prevSeq: null,
-    recibidos: 0, perdidos: 0, losRx: false, losLdr: false,
+    ultTlm: 0, ultLidar: 0, prevSeq: null, prevTms: null, prevEstado: null,
+    recibidos: 0, perdidos: 0, reinicios: 0, losRx: false, losLdr: false,
+    bmeOk: false, bnoOk: false,
   };
+  const RAD_A_GRAD = 180 / Math.PI;
 
   function valor(id, v, unidad) {
     const el = $(id);
     el.classList.remove('vacio');
     el.innerHTML = `${v}<small>${unidad}</small>`;
+  }
+  function sinValor(id, unidad) {
+    const el = $(id);
+    el.classList.add('vacio');
+    el.innerHTML = `—<small>${unidad}</small>`;
+  }
+  function eje(id, v) {
+    const el = $(id);
+    el.classList.toggle('vacio', v === null);
+    el.textContent = v === null ? '—' : v;
+  }
+  function bandera(id, texto, clase) {
+    const el = $(id);
+    el.className = 'verif ' + clase;
+    el.textContent = texto;
   }
 
   function seqPerdidos(prev, seq) {
@@ -477,24 +520,81 @@
     return ((seq - prev - 1) % 256 + 256) % 256;
   }
 
+  // Fase de vuelo según los bits de estado del transmisor (ver supercap.h)
+  function fase(e) {
+    if (e.supercap) return ['SUPERCAP ACTIVADO', 'ok'];
+    if (e.armado) return ['ARMADO · EN VUELO', 'warn'];
+    if (e.ref_ok) return ['EN TIERRA', ''];
+    return e.bme_ok ? ['CALIBRANDO SUELO', 'warn'] : ['SIN ALTÍMETRO', 'no'];
+  }
+
+  function avisarCambios(m) {
+    const e = m.estado, prev = est.prevEstado;
+    // En el primer paquete solo se avisan las fallas
+    const cambio = k => prev ? prev[k] !== e[k] : !e[k];
+    if (cambio('bme_ok')) evento(e.bme_ok ? 'BME280 dando datos' : 'BME280 sin datos (temp/pres/alt)', e.bme_ok ? 'ok' : 'bad');
+    if (cambio('bno_ok')) evento(e.bno_ok ? 'BNO085 dando datos' : 'BNO085 sin datos (IMU)', e.bno_ok ? 'ok' : 'bad');
+    if (e.ref_ok && !(prev && prev.ref_ok)) evento('Altitud de referencia del suelo tomada', 'ok');
+    if (e.armado && !(prev && prev.armado)) evento('CanSat ARMADO: superó la altura de armado', 'warn');
+    if (e.supercap && !(prev && prev.supercap)) evento(`SUPERCAPACITOR ACTIVADO a ${m.alt.toFixed(1)} m`, 'ok');
+    est.prevEstado = e;
+  }
+
   function onTlm(m) {
+    // Si el reloj del STM32 va hacia atrás, el transmisor se reinició: su SEQ vuelve a 0
+    if (est.prevTms !== null && m.t_ms < est.prevTms) {
+      est.reinicios++;
+      est.prevSeq = null;
+      est.prevEstado = null;
+      evento('El transmisor se reinició (altitud de referencia nueva)', 'warn');
+    }
+    est.prevTms = m.t_ms;
+
     const huecos = seqPerdidos(est.prevSeq, m.seq);
     if (huecos) { est.perdidos += huecos; evento(`Saltaron ${huecos} paquete(s) antes de SEQ ${m.seq}`, 'warn'); }
     est.prevSeq = m.seq;
     est.recibidos++;
     est.ultTlm = performance.now();
     if (est.losRx) { est.losRx = false; evento('Telemetría recuperada', 'ok'); }
+    avisarCambios(m);
 
-    valor('temp', m.temp, '°C'); empujar('s-temp', m.temp);
-    valor('alt', m.alt, 'm'); empujar('s-alt', m.alt);
-    valor('pres', m.pres, 'hPa'); empujar('s-pres', m.pres);
+    const e = m.estado;
+    est.bmeOk = e.bme_ok;
+    est.bnoOk = e.bno_ok;
+
+    // BME280: si no hay datos el transmisor manda ceros; se muestran como vacíos
+    if (e.bme_ok) {
+      valor('temp', m.temp.toFixed(2), '°C'); empujar('s-temp', m.temp);
+      valor('pres', m.pres.toFixed(2), 'hPa'); empujar('s-pres', m.pres);
+      valor('hum', m.hum.toFixed(1), '%RH'); empujar('s-hum', m.hum);
+    } else {
+      sinValor('temp', '°C'); sinValor('pres', 'hPa'); sinValor('hum', '%RH');
+    }
+    if (e.bme_ok && e.ref_ok) { valor('alt', m.alt.toFixed(1), 'm'); empujar('s-alt', m.alt); }
+    else sinValor('alt', 'm');
+
+    // BNO085
+    if (e.bno_ok) {
+      const amag = Math.hypot(...m.accel), gmag = Math.hypot(...m.gyro) * RAD_A_GRAD;
+      valor('amag', amag.toFixed(2), 'm/s²'); empujar('s-amag', +amag.toFixed(2));
+      valor('gmag', gmag.toFixed(1), '°/s'); empujar('s-gmag', +gmag.toFixed(1));
+      ['ax', 'ay', 'az'].forEach((id, i) => eje(id, m.accel[i].toFixed(2)));
+      ['gx', 'gy', 'gz'].forEach((id, i) => eje(id, (m.gyro[i] * RAD_A_GRAD).toFixed(1)));
+    } else {
+      sinValor('amag', 'm/s²'); sinValor('gmag', '°/s');
+      ['ax', 'ay', 'az', 'gx', 'gy', 'gz'].forEach(id => eje(id, null));
+    }
+
+    bandera('b-bme', 'BME280', e.bme_ok ? 'ok' : 'no');
+    bandera('b-bno', 'BNO085', e.bno_ok ? 'ok' : 'no');
+    bandera('fase', ...fase(e));
+
     valor('rssi', m.rssi, 'dBm'); empujar('s-rssi', m.rssi);
     valor('snr', m.snr.toFixed(1), 'dB'); empujar('s-snr', m.snr);
-    const v = $('verif');
-    v.className = 'verif ' + (m.verif ? 'ok' : 'no');
-    v.textContent = m.verif ? 'OK' : 'FALLA';
     $('seq').textContent = m.seq;
     $('recib').textContent = est.recibidos;
+    $('tx-up').textContent = met(m.t_ms).slice(2);
+    $('tx-rst').textContent = est.reinicios;
     pintarPerdidos();
   }
 
@@ -649,22 +749,23 @@
     $('cam-estado').textContent = camOk ? 'EN VIVO' : 'SIN SEÑAL';
     $('cam-estado').className = 'estado ' + (camOk ? '' : 'off');
 
-    // Receptor
+    // Receptor: el enlace manda en los tres paneles; con enlace, cada sensor marca el suyo
     const eRx = edad(est.ultTlm);
+    let enlace;
     if (!est.ws || !est.link.rx) {
       chip('e-rx', 'off', 'OFF');
-      marcarPanel('p-tlm', 'tlm-estado', est.ws ? 'RECEPTOR DESCONECTADO' : 'SIN ENLACE', 'off', true);
+      enlace = [est.ws ? 'RECEPTOR DESCONECTADO' : 'SIN ENLACE', 'off', true];
     } else if (!est.ultTlm || ahora - est.ultTlm > LOS_MS) {
       if (est.ultTlm && !est.losRx) { est.losRx = true; evento('Pérdida de señal de telemetría (LOS)', 'warn'); }
       chip('e-rx', 'los', eRx === null ? 'ESPERA' : `LOS ${eRx}s`);
-      marcarPanel('p-tlm', 'tlm-estado', eRx === null ? 'ESPERANDO PAQUETES' : `LOS ${eRx}s`, 'los', eRx !== null);
+      enlace = [eRx === null ? 'ESPERANDO PAQUETES' : `LOS ${eRx}s`, 'los', eRx !== null];
     } else {
       chip('e-rx', 'ok', 'OK');
-      marcarPanel('p-tlm', 'tlm-estado', 'NOMINAL', '', false);
+      enlace = null;
     }
-    $('rf-estado').textContent = $('tlm-estado').textContent;
-    $('rf-estado').className = $('tlm-estado').className;
-    $('p-rf').classList.toggle('alarma', $('p-tlm').classList.contains('alarma'));
+    marcarPanel('p-rf', 'rf-estado', ...(enlace || ['NOMINAL', '', false]));
+    marcarPanel('p-tlm', 'tlm-estado', ...(enlace || (est.bmeOk ? ['NOMINAL', '', false] : ['BME280 SIN DATOS', 'los', false])));
+    marcarPanel('p-imu', 'imu-estado', ...(enlace || (est.bnoOk ? ['NOMINAL', '', false] : ['BNO085 SIN DATOS', 'los', false])));
     $('ult').textContent = eRx === null ? '—' : `${((ahora - est.ultTlm) / 1000).toFixed(1)} s`;
 
     // LiDAR

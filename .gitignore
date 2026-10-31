@@ -1,11 +1,37 @@
 # PlatformIO
 .pio/
 .vscode/.browse.c_cpp.db*
+.vscode/ipch/
+
+# STM32 (CMake / STM32CubeIDE): salidas de compilación
+Telemetria/Transmisor_STM32/**/build/
+Telemetria/Transmisor_STM32/**/Debug/
+Telemetria/Transmisor_STM32/**/Release/
+*.elf
+*.map
+*.list
+
+# Herramientas de C/C++
+.cache/
+compile_commands.json
 
 # Python
 __pycache__/
+*.pyc
 .venv/
+venv/
 .pytest_cache/
 
-# Obsidian (estado de ventanas por usuario)
-OBC/Obsidian/Rovert/.obsidian/workspace.json
+# Obsidian: notas locales, no se versionan
+OBC/Obsidian/
+
+# Respaldos y comprimidos
+*.tar.gz
+*.zip
+
+# Sistema operativo y editores
+.DS_Store
+Thumbs.db
+desktop.ini
+*~
+*.swp

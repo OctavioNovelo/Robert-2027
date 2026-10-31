@@ -1,0 +1,20 @@
+{
+    "version": "2.0.0",
+    "tasks": [
+        {
+            "label": "Compilar (Debug)",
+            "type": "shell",
+            "command": "cmake --preset Debug && cmake --build --preset Debug",
+            "group": { "kind": "build", "isDefault": true },
+            "problemMatcher": ["$gcc"]
+        },
+        {
+            "label": "Grabar con ST-Link (sin depurar)",
+            "detail": "Usa STM32_Programmer_CLI de STM32CubeCLT",
+            "type": "shell",
+            "command": "STM32_Programmer_CLI --connect port=SWD --write build/Debug/Fly_Computer_CANSAT_2026.elf --verify -rst",
+            "dependsOn": "Compilar (Debug)",
+            "problemMatcher": []
+        }
+    ]
+}

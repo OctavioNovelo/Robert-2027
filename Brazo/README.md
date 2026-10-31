@@ -1,1 +1,3 @@
-Este es el modulo del brazo
+# Brazo
+
+Módulo del brazo del rover. Todavía no tiene código.

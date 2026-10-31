@@ -5,15 +5,31 @@ def linea_lidar(n):
     return "F," + ",".join(f"{100 + i}:5" for i in range(n))
 
 
+LINEA_TLM = "T,42,21.37,120.50,1013.25,1,-87,9.50,45.50,0.12,-0.34,9.81,1.500,-0.250,0.000,7,123456"
+
+
 def test_telemetria_valida():
-    assert parse_line("T,42,21,120,1013,1,-87,9.5") == {
-        "t": "tlm", "seq": 42, "temp": 21, "alt": 120, "pres": 1013,
-        "verif": 1, "rssi": -87, "snr": 9.5,
+    assert parse_line(LINEA_TLM) == {
+        "t": "tlm", "seq": 42, "temp": 21.37, "alt": 120.5, "pres": 1013.25,
+        "verif": 1, "rssi": -87, "snr": 9.5, "hum": 45.5,
+        "accel": [0.12, -0.34, 9.81], "gyro": [1.5, -0.25, 0.0], "t_ms": 123456,
+        "estado": {"bme_ok": True, "bno_ok": True, "ref_ok": True,
+                   "armado": False, "supercap": False},
     }
 
 
 def test_telemetria_con_salto_de_linea():
-    assert parse_line("T,0,-5,0,900,0,-120,-3.25\r\n")["temp"] == -5
+    assert parse_line(LINEA_TLM.replace("21.37", "-5.00") + "\r\n")["temp"] == -5.0
+
+
+def test_telemetria_supercap_activado():
+    m = parse_line(LINEA_TLM.replace(",7,123456", ",31,123456"))
+    assert m["estado"]["armado"] and m["estado"]["supercap"]
+
+
+def test_telemetria_formato_viejo():
+    # el paquete de 7 campos del firmware anterior ya no se acepta
+    assert parse_line("T,42,21,120,1013,1,-87,9.5") is None
 
 
 def test_paquete_invalido():
