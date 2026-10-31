@@ -35,3 +35,6 @@ Thumbs.db
 desktop.ini
 *~
 *.swp
+
+# Instrucciones locales para Claude Code
+CLAUDE.md
